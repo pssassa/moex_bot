@@ -28,9 +28,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   health: () => request<Health>("/api/health"),
-  instruments: (q = "", limit = 250) => {
+  instruments: (q = "", limit = 400, kind?: string) => {
     const params = new URLSearchParams({ limit: String(limit) });
     if (q.trim()) params.set("q", q.trim());
+    if (kind) params.set("kind", kind);
     return request<Instrument[]>(`/api/instruments?${params}`);
   },
   instrument: (ticker: string) => request<Instrument>(`/api/instruments/${ticker}`),

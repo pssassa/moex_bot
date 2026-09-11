@@ -25,7 +25,7 @@ export default function App() {
           <div className="logo-mark">М</div>
           <div>
             <strong>MOEX ANALYST</strong>
-            <span>TQBR · новости · макро · ИИ-сценарий</span>
+            <span>акции · фонды · металлы · ИИ</span>
           </div>
         </Link>
         <div style={{ display: "flex", alignItems: "center" }}>

@@ -12,6 +12,8 @@ class InstrumentOut(BaseModel):
     lot_size: int | None = None
     emitent_title: str | None = None
     sec_type: str | None = None
+    kind: str = "share"
+    board: str | None = None
     last_close: float | None = None
     last_change_pct: float | None = None
     last_candle_at: datetime | None = None
@@ -58,6 +60,11 @@ class MacroOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class PathPoint(BaseModel):
+    t: int
+    change_pct: float
+
+
 class ForecastOut(BaseModel):
     id: int
     ticker: str
@@ -68,6 +75,15 @@ class ForecastOut(BaseModel):
     news_factors: str | None = None
     macro_factors: str | None = None
     risks: str | None = None
+    chart_analysis: str | None = None
+    news_alignment: str | None = None
+    news_vs_chart: str | None = None
+    expected_change_pct: float | None = None
+    range_low_pct: float | None = None
+    range_high_pct: float | None = None
+    horizon_days: int | None = None
+    spot_price: float | None = None
+    path: list[PathPoint] = []
     model: str | None = None
 
     model_config = {"from_attributes": True}

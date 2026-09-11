@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.models import Candle, Instrument
-from app.services.iss import fetch_board_candles, parse_iss_datetime
+from app.services.iss import fetch_candles, parse_iss_datetime
 
 
 def _last_stored(db: Session, instrument_id: int, timeframe: str) -> datetime | None:
@@ -28,6 +28,13 @@ def candles_are_fresh(last_ts: datetime | None) -> bool:
     return (now - last_ts) <= timedelta(hours=84)
 
 
+def _iss_location(instrument: Instrument) -> tuple[str, str, str]:
+    kind = (instrument.kind or "share").lower()
+    if kind == "metal":
+        return "currency", "selt", instrument.board or "CETS"
+    return "stock", "shares", instrument.board or "TQBR"
+
+
 def sync_instrument_candles(db: Session, instrument: Instrument, timeframe: str = "D") -> int:
     last = _last_stored(db, instrument.id, timeframe)
     today = date.today()
@@ -36,7 +43,16 @@ def sync_instrument_candles(db: Session, instrument: Instrument, timeframe: str 
     else:
         start = today - timedelta(days=settings.candle_history_days)
     interval = 24 if timeframe == "D" else 60
-    raw = fetch_board_candles(instrument.ticker, start, today, interval=interval)
+    engine, market, board = _iss_location(instrument)
+    raw = fetch_candles(
+        instrument.ticker,
+        start,
+        today,
+        engine=engine,
+        market=market,
+        board=board,
+        interval=interval,
+    )
     if not raw:
         return 0
 

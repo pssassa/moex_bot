@@ -24,6 +24,12 @@ export function listingLabel(level: number | null | undefined): string {
   return "вне списка";
 }
 
+export function kindLabel(kind: string | null | undefined): string {
+  if (kind === "fund") return "Фонд";
+  if (kind === "metal") return "Металл";
+  return "Акция";
+}
+
 export function relativeTime(iso: string | null | undefined): string {
   if (!iso) return "";
   const then = new Date(iso).getTime();
@@ -61,4 +67,18 @@ export function ret(candles: { close: number }[], bars: number): number | null {
   const prev = candles[candles.length - 1 - bars].close;
   if (!prev) return null;
   return (last / prev - 1) * 100;
+}
+
+export function nextWeekdays(fromIso: string, count: number): string[] {
+  const cursor = new Date(`${fromIso.slice(0, 10)}T12:00:00Z`);
+  if (Number.isNaN(cursor.getTime()) || count <= 0) return [];
+  const out: string[] = [];
+  while (out.length < count) {
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+    const weekday = cursor.getUTCDay();
+    if (weekday !== 0 && weekday !== 6) {
+      out.push(cursor.toISOString().slice(0, 10));
+    }
+  }
+  return out;
 }

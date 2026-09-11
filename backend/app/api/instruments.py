@@ -18,10 +18,13 @@ router = APIRouter(prefix="/instruments", tags=["instruments"])
 @router.get("", response_model=list[InstrumentOut])
 def list_instruments(
     q: str | None = Query(default=None, min_length=1),
-    limit: int = Query(default=80, ge=1, le=300),
+    kind: str | None = Query(default=None),
+    limit: int = Query(default=80, ge=1, le=500),
     db: Session = Depends(get_db),
 ) -> list[Instrument]:
     query = db.query(Instrument).filter(Instrument.is_russian.is_(True))
+    if kind:
+        query = query.filter(Instrument.kind == kind.strip().lower())
     if q:
         like = f"%{q.strip()}%"
         query = query.filter(
@@ -42,7 +45,7 @@ def list_instruments(
 def get_one(ticker: str, db: Session = Depends(get_db)) -> Instrument:
     instrument = db.query(Instrument).filter(Instrument.ticker == ticker.upper()).first()
     if instrument is None:
-        raise HTTPException(status_code=404, detail="Тикер не найден среди российских акций TQBR")
+        raise HTTPException(status_code=404, detail="Тикер не найден")
     return instrument
 
 

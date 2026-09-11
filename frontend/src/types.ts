@@ -7,6 +7,8 @@ export type Instrument = {
   lot_size: number | null;
   emitent_title: string | null;
   sec_type: string | null;
+  kind: "share" | "fund" | "metal" | string;
+  board: string | null;
   last_close: number | null;
   last_change_pct: number | null;
   last_candle_at: string | null;
@@ -47,6 +49,11 @@ export type Macro = {
   cbr_key_rate: number | null;
 };
 
+export type PathPoint = {
+  t: number;
+  change_pct: number;
+};
+
 export type Forecast = {
   id: number;
   ticker: string;
@@ -57,6 +64,15 @@ export type Forecast = {
   news_factors: string | null;
   macro_factors: string | null;
   risks: string | null;
+  chart_analysis: string | null;
+  news_alignment: string | null;
+  news_vs_chart: "confirm" | "contradict" | "mixed" | string | null;
+  expected_change_pct: number | null;
+  range_low_pct: number | null;
+  range_high_pct: number | null;
+  horizon_days: number | null;
+  spot_price: number | null;
+  path: PathPoint[];
   model: string | null;
 };
 

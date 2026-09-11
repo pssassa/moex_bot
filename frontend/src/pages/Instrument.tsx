@@ -5,11 +5,11 @@ import PriceChart from "../components/Chart";
 import ForecastCard from "../components/ForecastCard";
 import NewsList from "../components/NewsList";
 import type { Candle, Forecast, Instrument, NewsItem } from "../types";
-import { listingLabel, money, relativeTime, ret, signedPct, tone } from "../format";
+import { listingLabel, kindLabel, money, relativeTime, ret, signedPct, tone } from "../format";
 
 export default function InstrumentPage() {
   const { ticker = "" } = useParams();
-  const code = ticker.toUpperCase();
+  const code = decodeURIComponent(ticker).toUpperCase();
   const [info, setInfo] = useState<Instrument | null>(null);
   const [candles, setCandles] = useState<Candle[]>([]);
   const [news, setNews] = useState<NewsItem[]>([]);
@@ -73,10 +73,11 @@ export default function InstrumentPage() {
             <div className="ticker">{info.ticker}</div>
             <h1>{info.shortname}</h1>
             <div className="meta-row">
-              <span className="badge">{listingLabel(info.list_level)}</span>
-              <span className="badge">TQBR</span>
+              <span className="badge">{kindLabel(info.kind)}</span>
+              <span className="badge">{info.board || "TQBR"}</span>
+              {info.kind !== "metal" && <span className="badge">{listingLabel(info.list_level)}</span>}
               {info.lot_size != null && <span className="badge">лот {info.lot_size}</span>}
-              <span className="badge">{info.isin}</span>
+              {info.isin && <span className="badge">{info.isin}</span>}
             </div>
             {info.name && <p className="muted">{info.name}</p>}
           </div>
@@ -122,11 +123,18 @@ export default function InstrumentPage() {
             </div>
           )}
         </div>
-        <ForecastCard forecast={forecast} loading={loadingForecast} error={forecastError} onGenerate={generate} />
+        <ForecastCard
+          forecast={forecast}
+          candles={candles}
+          loading={loadingForecast}
+          error={forecastError}
+          onGenerate={generate}
+        />
       </div>
 
       <div className="note" style={{ marginTop: 16 }}>
-        ИИ собирает сценарий, а не гарантию результата. Сделки и убытки — ваша ответственность. Данные: MOEX ISS, RSS, ЦБ, Hugging Face.
+        ИИ сначала читает график, затем сверяет его с новостями и рисует сценарий на 5 сессий. Это не гарантия
+        результата. Сделки и убытки — ваша ответственность. Данные: MOEX ISS, RSS, ЦБ, Hugging Face.
       </div>
 
       <div className="card">

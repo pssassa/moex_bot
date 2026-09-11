@@ -313,6 +313,7 @@ nav a:hover {
 }
 
 .chart-box { height: 400px; }
+.chart-box.mini { height: 176px; margin: 4px 0 12px; }
 
 .btn {
   background: linear-gradient(180deg, var(--gold-2), var(--gold));
@@ -457,6 +458,56 @@ nav a:hover {
   margin: 8px 0 12px;
 }
 
+.outlook {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 0 0 12px;
+}
+
+.outlook div {
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line-2);
+  background: rgba(255,255,255,0.03);
+}
+
+.outlook span {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.outlook b {
+  display: block;
+  margin-top: 4px;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 16px;
+}
+
+.align-pill {
+  display: inline-block;
+  margin: 0 0 12px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid var(--line);
+  color: var(--gold-2);
+}
+
+.align-pill.confirm {
+  border-color: rgba(58, 216, 154, 0.35);
+  color: var(--up);
+}
+
+.align-pill.contradict {
+  border-color: rgba(255, 107, 117, 0.35);
+  color: var(--down);
+}
+
 .bar {
   height: 6px;
   border-radius: 99px;
@@ -525,6 +576,6 @@ nav a:hover {
 
 @media (max-width: 720px) {
   .topbar, .paper-head { flex-direction: column; align-items: flex-start; }
-  .macro-strip, .stats, .hero, .grid-2, .kpi-row { grid-template-columns: 1fr; }
+  .macro-strip, .stats, .hero, .grid-2, .kpi-row, .outlook { grid-template-columns: 1fr; }
   .clock { display: none; }
 }

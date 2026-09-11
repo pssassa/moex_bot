@@ -5,9 +5,31 @@ from datetime import date, datetime, timezone
 from typing import Any
 from xml.etree import ElementTree as ET
 
-from app.services.http import iss_get
+from app.services.http import ISS_TIMEOUT, USER_AGENT, _get, iss_get
 
 ISS_BASE = "https://iss.moex.com/iss"
+
+
+def _json_has_rows(payload: dict[str, Any]) -> bool:
+    for block in payload.values():
+        if isinstance(block, dict) and block.get("data"):
+            return True
+    return False
+
+
+def iss_json(path: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
+    raw = iss_get(path, params, accept="application/json")
+    payload = json.loads(raw)
+    if _json_has_rows(payload):
+        return payload
+    response = _get(
+        f"{ISS_BASE}{path}",
+        params,
+        {"User-Agent": USER_AGENT, "Accept": "application/json"},
+        follow_redirects=True,
+        timeout=ISS_TIMEOUT,
+    )
+    return response.json()
 
 
 def table_to_dicts(block: dict[str, Any] | None) -> list[dict[str, Any]]:
@@ -39,28 +61,38 @@ def fetch_tqbr_securities() -> list[dict[str, Any]]:
     return xml_table(raw, "securities")
 
 
-def fetch_board_candles(
+def fetch_cets_security(secid: str) -> dict[str, Any] | None:
+    payload = iss_json(
+        f"/engines/currency/markets/selt/boards/CETS/securities/{secid}.json",
+        params={"iss.meta": "off", "iss.only": "securities"},
+    )
+    rows = table_to_dicts(payload.get("securities"))
+    return rows[0] if rows else None
+
+
+def fetch_candles(
     ticker: str,
     start: date,
     end: date,
+    *,
+    engine: str,
+    market: str,
+    board: str,
     interval: int = 24,
 ) -> list[dict[str, Any]]:
-    path = f"/engines/stock/markets/shares/boards/TQBR/securities/{ticker}/candles.json"
+    path = f"/engines/{engine}/markets/{market}/boards/{board}/securities/{ticker}/candles.json"
     rows: list[dict[str, Any]] = []
     cursor = 0
     while True:
-        payload = json.loads(
-            iss_get(
-                path,
-                params={
-                    "iss.meta": "off",
-                    "from": start.isoformat(),
-                    "till": end.isoformat(),
-                    "interval": interval,
-                    "start": cursor,
-                },
-                accept="application/json",
-            )
+        payload = iss_json(
+            path,
+            params={
+                "iss.meta": "off",
+                "from": start.isoformat(),
+                "till": end.isoformat(),
+                "interval": interval,
+                "start": cursor,
+            },
         )
         chunk = table_to_dicts(payload.get("candles"))
         if not chunk:
@@ -70,6 +102,23 @@ def fetch_board_candles(
         if len(chunk) < 100:
             break
     return rows
+
+
+def fetch_board_candles(
+    ticker: str,
+    start: date,
+    end: date,
+    interval: int = 24,
+) -> list[dict[str, Any]]:
+    return fetch_candles(
+        ticker,
+        start,
+        end,
+        engine="stock",
+        market="shares",
+        board="TQBR",
+        interval=interval,
+    )
 
 
 def fetch_index_candles(

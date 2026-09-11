@@ -3,9 +3,10 @@ from __future__ import annotations
 import re
 
 from app.models import Instrument
-
+from app.services.instruments import METALS
 
 _TICKER_RE_CACHE: dict[str, re.Pattern[str]] = {}
+_METAL_ALIASES = {item["secid"]: item["aliases"].split() for item in METALS}
 
 
 def _ticker_re(ticker: str) -> re.Pattern[str]:
@@ -28,9 +29,11 @@ def _name_needles(instrument: Instrument) -> list[str]:
                 needles.append(token)
         if len(cleaned.strip()) >= 5:
             needles.append(cleaned.strip())
+    needles.extend(_METAL_ALIASES.get(instrument.ticker, []))
     # уникальные, длинные сначала — меньше ложных срабатываний коротких кусков
     unique = sorted(set(needles), key=len, reverse=True)
-    return unique[:4]
+    limit = 6 if (instrument.kind or "") == "metal" else 4
+    return unique[:limit]
 
 
 def match_instruments(title: str, instruments: list[Instrument]) -> list[Instrument]:

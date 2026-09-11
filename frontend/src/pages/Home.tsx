@@ -3,11 +3,19 @@ import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api";
 import MacroStrip from "../components/MacroStrip";
 import type { Instrument, Macro } from "../types";
-import { listingLabel, money, signedPct, tone } from "../format";
+import { kindLabel, listingLabel, money, signedPct, tone } from "../format";
+
+const KINDS = [
+  { id: "", label: "Все" },
+  { id: "share", label: "Акции" },
+  { id: "fund", label: "Фонды" },
+  { id: "metal", label: "Металлы" },
+];
 
 export default function HomePage() {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
+  const [kind, setKind] = useState("");
   const [items, setItems] = useState<Instrument[]>([]);
   const [macro, setMacro] = useState<Macro | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -20,38 +28,43 @@ export default function HomePage() {
   useEffect(() => {
     const handle = window.setTimeout(() => {
       api
-        .instruments(query, 250)
+        .instruments(query, 400)
         .then(setItems)
         .catch((err: Error) => setError(err.message));
     }, 220);
     return () => window.clearTimeout(handle);
   }, [query]);
 
-  const priced = useMemo(() => items.filter((item) => item.last_close != null).length, [items]);
-  const firstList = useMemo(() => items.filter((item) => item.list_level === 1).length, [items]);
+  const visible = useMemo(
+    () => (kind ? items.filter((item) => item.kind === kind) : items),
+    [items, kind],
+  );
+  const shares = useMemo(() => items.filter((item) => item.kind === "share").length, [items]);
+  const funds = useMemo(() => items.filter((item) => item.kind === "fund").length, [items]);
+  const metals = useMemo(() => items.filter((item) => item.kind === "metal").length, [items]);
 
   return (
     <div>
       <section className="hero">
         <div className="hero-copy">
-          <h1>Российские акции, новости и спокойный ИИ-сценарий.</h1>
+          <h1>Акции, фонды и металлы — с новостями и ИИ-сценарием.</h1>
           <p>
-            Только TQBR и эмитенты с ISIN RU. Котировки — с Московской биржи, фон — индексы, валюта и ставка ЦБ.
-            Модель не обещает цену, а собирает картину дня.
+            Акции и биржевые фонды TQBR (ISIN RU), золото, серебро, платина и палладий — с валютного рынка MOEX.
+            Модель разбирает график, сверяет его с новостями и даёт сценарий хода на 5 сессий — не целевую цену.
           </p>
         </div>
         <div className="stats">
           <div className="stat">
-            <span className="muted">В справочнике</span>
-            <b>{items.length || "—"}</b>
+            <span className="muted">Акции</span>
+            <b>{shares || "—"}</b>
           </div>
           <div className="stat">
-            <span className="muted">С ценой закрытия</span>
-            <b>{priced || "—"}</b>
+            <span className="muted">Фонды</span>
+            <b>{funds || "—"}</b>
           </div>
           <div className="stat">
-            <span className="muted">Первый список</span>
-            <b>{firstList || "—"}</b>
+            <span className="muted">Металлы</span>
+            <b>{metals || "—"}</b>
           </div>
           <div className="stat">
             <span className="muted">IMOEX за день</span>
@@ -62,13 +75,25 @@ export default function HomePage() {
 
       <MacroStrip macro={macro} />
 
+      <div className="seg">
+        {KINDS.map((item) => (
+          <button
+            key={item.id || "all"}
+            className={kind === item.id ? "btn" : "btn ghost"}
+            onClick={() => setKind(item.id)}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+
       <div className="search-row">
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Найти бумагу: SBER, Газпром, YDEX…"
+          placeholder="Найти: SBER, LQDT, золото…"
         />
-        <div className="count-pill">{items.length} бумаг</div>
+        <div className="count-pill">{visible.length} бумаг</div>
       </div>
       {error && <div className="banner">{error}</div>}
       <div className="table-wrap">
@@ -76,17 +101,17 @@ export default function HomePage() {
           <thead>
             <tr>
               <th>Тикер</th>
-              <th>Компания</th>
+              <th>Название</th>
               <th>Цена</th>
               <th>День</th>
-              <th>Листинг</th>
+              <th>Класс</th>
             </tr>
           </thead>
           <tbody>
-            {items.map((item) => (
-              <tr key={item.ticker} onClick={() => navigate(`/t/${item.ticker}`)}>
+            {visible.map((item) => (
+              <tr key={item.ticker} onClick={() => navigate(`/t/${encodeURIComponent(item.ticker)}`)}>
                 <td>
-                  <Link className="ticker" to={`/t/${item.ticker}`}>
+                  <Link className="ticker" to={`/t/${encodeURIComponent(item.ticker)}`}>
                     {item.ticker}
                   </Link>
                 </td>
@@ -99,13 +124,20 @@ export default function HomePage() {
                 <td className="mono">{money(item.last_close, 4)}</td>
                 <td className={tone(item.last_change_pct)}>{signedPct(item.last_change_pct)}</td>
                 <td>
-                  <span className="badge">{listingLabel(item.list_level)}</span>
+                  <span className="badge">{kindLabel(item.kind)}</span>
+                  {item.kind !== "metal" && (
+                    <span className="badge" style={{ marginLeft: 6 }}>
+                      {listingLabel(item.list_level)}
+                    </span>
+                  )}
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
-        {items.length === 0 && <div className="empty">Ничего не нашлось. Смените запрос или дождитесь синка TQBR.</div>}
+        {visible.length === 0 && (
+          <div className="empty">Ничего не нашлось. Смените фильтр или дождитесь синка справочника.</div>
+        )}
       </div>
     </div>
   );

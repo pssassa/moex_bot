@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     hf_model: str = "Qwen/Qwen3.8-27B"
     hf_provider: str = "novita"
     forecast_cache_hours: int = 6
+    forecast_horizon_days: int = 5
     candle_history_days: int = 500
     news_max_age_days: int = 14
 
