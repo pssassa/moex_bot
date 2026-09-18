@@ -121,6 +121,33 @@ class Forecast(Base):
     instrument: Mapped[Instrument] = relationship(back_populates="forecasts")
 
 
+class BacktestForecast(Base):
+    """Симулированный прогноз на историческую дату (walk-forward), для оценки
+    точности модели без ожидания реального времени. Никогда не отдаётся в
+    live API прогнозов — только через /api/backtest."""
+
+    __tablename__ = "backtest_forecasts"
+    __table_args__ = (UniqueConstraint("instrument_id", "as_of", name="uq_backtest_inst_asof"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    instrument_id: Mapped[int] = mapped_column(ForeignKey("instruments.id", ondelete="CASCADE"), index=True)
+    as_of: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    horizon_days: Mapped[int] = mapped_column(Integer)
+    direction: Mapped[str] = mapped_column(String(16))
+    confidence: Mapped[float | None] = mapped_column(Float)
+    expected_change_pct: Mapped[float | None] = mapped_column(Float)
+    range_low_pct: Mapped[float | None] = mapped_column(Float)
+    range_high_pct: Mapped[float | None] = mapped_column(Float)
+    spot_price: Mapped[float] = mapped_column(Float)
+    path_json: Mapped[str | None] = mapped_column(Text)
+    thesis: Mapped[str | None] = mapped_column(Text)
+    news_vs_chart: Mapped[str | None] = mapped_column(String(16))
+    model: Mapped[str | None] = mapped_column(String(128))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=func.now())
+
+    instrument: Mapped[Instrument] = relationship()
+
+
 class SyncState(Base):
     __tablename__ = "sync_state"
 

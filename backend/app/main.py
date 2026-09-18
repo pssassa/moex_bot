@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.backtest import router as backtest_router
 from app.api.forecast import router as forecast_router
 from app.api.health import router as health_router
 from app.api.instruments import router as instruments_router
@@ -22,3 +23,4 @@ app.include_router(instruments_router, prefix="/api")
 app.include_router(news_router, prefix="/api")
 app.include_router(macro_router, prefix="/api")
 app.include_router(forecast_router, prefix="/api")
+app.include_router(backtest_router, prefix="/api")
