@@ -28,52 +28,72 @@ def candles_are_fresh(last_ts: datetime | None) -> bool:
     return (now - last_ts) <= timedelta(hours=84)
 
 
-def _iss_location(instrument: Instrument) -> tuple[str, str, str]:
+# фонды торговались на TQTF до переезда на TQBR 22.06.2026, более ранняя история осталась там
+LEGACY_FUND_BOARD = "TQTF"
+FUND_BOARD_MIGRATION = date(2026, 6, 22)
+
+
+def _iss_locations(instrument: Instrument, start: date) -> list[tuple[str, str, str]]:
     kind = (instrument.kind or "share").lower()
     if kind == "metal":
-        return "currency", "selt", instrument.board or "CETS"
-    return "stock", "shares", instrument.board or "TQBR"
+        return [("currency", "selt", instrument.board or "CETS")]
+    board = instrument.board or "TQBR"
+    locations = [("stock", "shares", board)]
+    if kind == "fund" and board != LEGACY_FUND_BOARD and start < FUND_BOARD_MIGRATION:
+        locations.insert(0, ("stock", "shares", LEGACY_FUND_BOARD))
+    return locations
 
 
-def sync_instrument_candles(db: Session, instrument: Instrument, timeframe: str = "D") -> int:
+def sync_instrument_candles(
+    db: Session,
+    instrument: Instrument,
+    timeframe: str = "D",
+    start: date | None = None,
+) -> int:
     last = _last_stored(db, instrument.id, timeframe)
     today = date.today()
-    if last is not None:
+    if start is not None:
+        pass
+    elif last is not None:
         start = last.date() - timedelta(days=1)
     else:
         start = today - timedelta(days=settings.candle_history_days)
     interval = 24 if timeframe == "D" else 60
-    engine, market, board = _iss_location(instrument)
-    raw = fetch_candles(
-        instrument.ticker,
-        start,
-        today,
-        engine=engine,
-        market=market,
-        board=board,
-        interval=interval,
-    )
+    raw = []
+    for engine, market, board in _iss_locations(instrument, start):
+        raw.extend(
+            fetch_candles(
+                instrument.ticker,
+                start,
+                today,
+                engine=engine,
+                market=market,
+                board=board,
+                interval=interval,
+            )
+        )
     if not raw:
         return 0
 
-    payload = []
+    # один INSERT ... ON CONFLICT не может дважды обновить одну строку, поэтому
+    # дубли дат между режимами схлопываем заранее: побеждает текущий режим (он идёт последним)
+    by_ts: dict = {}
     for row in raw:
         ts = parse_iss_datetime(row.get("begin") or row.get("end"))
         if ts is None or row.get("close") is None:
             continue
-        payload.append(
-            {
-                "instrument_id": instrument.id,
-                "timeframe": timeframe,
-                "ts": ts,
-                "open": float(row.get("open") or row["close"]),
-                "high": float(row.get("high") or row["close"]),
-                "low": float(row.get("low") or row["close"]),
-                "close": float(row["close"]),
-                "volume": float(row["volume"]) if row.get("volume") is not None else None,
-                "value": float(row["value"]) if row.get("value") is not None else None,
-            }
-        )
+        by_ts[ts] = {
+            "instrument_id": instrument.id,
+            "timeframe": timeframe,
+            "ts": ts,
+            "open": float(row.get("open") or row["close"]),
+            "high": float(row.get("high") or row["close"]),
+            "low": float(row.get("low") or row["close"]),
+            "close": float(row["close"]),
+            "volume": float(row["volume"]) if row.get("volume") is not None else None,
+            "value": float(row["value"]) if row.get("value") is not None else None,
+        }
+    payload = list(by_ts.values())
     if not payload:
         return 0
 
