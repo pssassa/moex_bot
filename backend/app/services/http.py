@@ -8,6 +8,10 @@ import httpx
 USER_AGENT = "moex-analyst/1.0 (+https://localhost; research)"
 ISS_TIMEOUT = httpx.Timeout(90.0, connect=25.0)
 
+# общий клиент держит соединения открытыми: имя хоста резолвится один раз на соединение,
+# а не на каждый запрос — при медленном и теряющем пакеты DNS это ускоряет загрузку в разы
+_client = httpx.Client(limits=httpx.Limits(max_keepalive_connections=10, keepalive_expiry=30.0))
+
 
 class HttpError(RuntimeError):
     pass
@@ -24,7 +28,7 @@ def _get(
     last_error: Exception | None = None
     for attempt in range(3):
         try:
-            response = httpx.get(
+            response = _client.get(
                 url,
                 params=params,
                 timeout=timeout,
@@ -78,7 +82,7 @@ def iss_get(path: str, params: dict[str, Any] | None = None, accept: str = "appl
     http_url = f"http://iss.moex.com/iss{path}"
     https_url = f"https://iss.moex.com/iss{path}"
     try:
-        response = httpx.get(
+        response = _client.get(
             http_url,
             params=params,
             timeout=ISS_TIMEOUT,

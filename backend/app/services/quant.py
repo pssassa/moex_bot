@@ -521,6 +521,7 @@ def evaluate(ds: Dataset, test_days: int = 160, folds: int = 4) -> dict:
                 name: int(len(np.unique(ds.inst_id[ds.kind == code]))) for name, code in KIND_CODE.items()
             },
             "skipped_by_kind": ds.skipped,
+            "features": int(ds.X.shape[1]),
             "rows_total": int(len(ds.ret5)),
             "test_rows": int(len(idx)),
             "test_period": [str(ds.unique_dates[int(rank.min())]), str(ds.unique_dates[int(rank.max())])],
